@@ -36,4 +36,53 @@ AWSのサーバーレスAPIを簡単にdeployするために[AWS Chalice](https:
   - API Gateway
   - IoT Core
   - Lambda
-- Python 3.8
+- Python 3.7+
+
+### 使い方
+まずはlocalでAWSのSDKやCLI Credentialsを設定してください。様々な設定仕方があるんですが、`~/.aws/config`でやるのはおすすめです。詳しくは[こちら](https://aws.github.io/chalice/quickstart.html#credentials)です。
+
+次、Python3.7のVENVを作ってactivateします。
+
+```
+python3 -m venv venv
+. /bin/activate
+```
+
+AWSのchaliceをインストールします。後、`help`でインストールしたことを確認できます。
+
+```
+pip install chalice
+chalice --help
+```
+
+次、このリポジトリをクローンして、`cd`でフォルダーに入ります。
+
+```
+git clone git@github.com:Phamiliarize/IoTLite.git
+cd IoTLite
+```
+
+AWSに`chalice deploy`でdeployします。
+
+```
+$ chalice deploy
+Creating deployment package.
+Creating IAM role: helloworld-dev
+Creating lambda function: helloworld-dev
+Creating Rest API
+Resources deployed:
+  - Lambda ARN: arn:aws:lambda:us-west-2:12345:function:helloworld-dev
+  - Rest API URL: https://abcd.execute-api.us-west-2.amazonaws.com/api/
+```
+
+調査が終わってから、作ったリソースが`chalice delete`で簡単に消せます。
+
+```
+$ chalice delete
+Deleting Rest API: abcd4kwyl4
+Deleting function aws:arn:lambda:region:123456789:helloworld-dev
+Deleting IAM Role helloworld-dev
+```
+
+### インターフェース仕様書
+s
