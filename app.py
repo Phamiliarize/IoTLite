@@ -3,7 +3,6 @@ from chalice import BadRequestError
 
 app = Chalice(app_name='IoTLite')
 
-
 @app.route('/')
 def index():
     return {'hello': 'world'}
