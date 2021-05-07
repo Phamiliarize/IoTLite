@@ -83,6 +83,21 @@ Deleting Rest API: abcd4kwyl4
 Deleting function aws:arn:lambda:region:123456789:helloworld-dev
 Deleting IAM Role helloworld-dev
 ```
+### 機能
+- Device Onboarding
+-- Register Device
+--- Created Thing + Cert + Assigns dynamic policy that allows communication on channels of the thing only
+
+- Device Status
+-- List Devices (Connection Status Included)
+-- Get Device (Connection Status Included)
+
+- Device Control
+-- Commands
 
 ### インターフェース仕様書
-s
+
+
+### 将来の延長
+- 今回、ユーザ認証システムが顧客要件に入れていないので、実装しないですが、することになったら、Chaliceで簡単に[Cognito Userpool](https://aws.github.io/chalice/topics/authorizers.html#amazon-cognito-user-pools)を統合するできます。実装することをおすすめです。
+- 新しいコマンドが自由にCOMMANDSのdictionaryに追加できます。
