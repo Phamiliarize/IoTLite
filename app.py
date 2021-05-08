@@ -3,6 +3,7 @@ import json
 import uuid
 
 from chalice import Chalice, BadRequestError, ChaliceViewError, NotFoundError
+from chalicelib import serializers, commands
 
 app = Chalice(app_name='IoTLite')
 awsIotData = boto3.client('iot-data')
@@ -14,6 +15,7 @@ def index():
     return {'hello': 'world'}
 
 
+# GET: ライト一覧を取得 POST: 新しいライトを登録
 @app.route('/light', methods=['GET', 'POST'])
 def list_light():
     request = app.current_request
@@ -24,9 +26,10 @@ def list_light():
         try:
             # handle next token/pagination
             response = awsIot.search_index(**search_kwargs)
+            print(response)
             return {
-                'lights': [light_serializer(thing) for thing in response['things']],
-                'nextToken': getattr(response, 'nextToken', None)
+                'lights': [serializers.light(thing) for thing in response['things']],
+                'nextToken': response.get('nextToken', None)
             }
         except awsIot.exceptions.InvalidRequestException as e:
             raise BadRequestError(e)
@@ -45,7 +48,7 @@ def list_light():
                 target=cert['certificateArn']
             )
 
-            response = awsIot.create_thing(
+            thing = awsIot.create_thing(
                 thingName=lightId,
             )
 
@@ -54,37 +57,68 @@ def list_light():
                 principal=cert['certificateArn']
             )
 
-            return {
-                'id': response['thingName'],
-                'cert': cert['certificatePem'],
-                'publicKey': cert['keyPair']['PublicKey'],
-                'privateKey': cert['keyPair']['PrivateKey']
-            }
+            return serializers.new_device(thing, cert)
         except (Exception, KeyError) as e:
             print(e)
             raise ChaliceViewError(e)
 
 
-@app.route('/light/{name}', methods=['GET'])
-def one_light(name):
-    try:
-        response = awsIot.search_index(
-            queryString='thingName:{}'.format(name)
-        )
-        return light_serializer(response['things'][0])
-    except (IndexError, awsIot.exceptions.ResourceNotFoundException):
-        raise NotFoundError('The requested light could not be found.')
-    except Exception as e:
-        print(e)
-        raise ChaliceViewError('A server error has occurred.')
+# GET: １台のライトを取得 DELETE: １台のライトを削除
+@app.route('/light/{id}', methods=['GET', 'DELETE'])
+def one_light(id):
+    request = app.current_request
+        try:
+            if request.method == 'GET':
+                response = awsIot.search_index(
+                    queryString='thingName:{}'.format(id)
+                )
+                return serializers.light(response['things'][0])
+            if request.method == 'DELETE':
+                certARN = client.list_thing_principals(
+                    thingName={id}
+                )['principals'][0]
+
+                # 非同期なので、今すぐ消すことができないです。
+                client.detach_thing_principal(
+                    thingName=id,
+                    principal=certARN
+                )
+
+                # set PENDING_DELETE attribute, add to delete sqs
+                
+                # SQSで
+                # inactivate_cert = awsIot.update_certificate(
+                #     certificateId=certARN,
+                #     newStatus='INACTIVE'
+                # )
+
+                # delete_cert = client.delete_certificate(
+                #     certificateId=certARN,
+                #     forceDelete=True
+                # )
+
+                # delete_thing = awsIot.delete_thing(
+                #     thingName=id
+                # )
+            return Response(body=None,
+                    status_code=204,
+                    headers={'Content-Type': 'application/json'})
+
+        except (IndexError, awsIot.exceptions.ResourceNotFoundException):
+            raise NotFoundError('The requested light could not be found.')
+        except Exception as e:
+            print(e)
+            raise ChaliceViewError('A server error has occurred.')
 
 
-@app.route('/light/{name}/command/{command}', methods=['POST'])
-def one_light_command(name, command):
-    payload = command_switch(command)
+# ライトを１台にコマンドを送信
+# chancelib/commandsで新しいコマンドを追加
+@app.route('/light/{id}/command/{command}', methods=['POST'])
+def one_light_command(id, command):
+    payload = commands.switch(command)
     try:
         response = awsIotData.publish(
-            topic='{}/command'.format(name),
+            topic='{}/command'.format(id),
             qos=1,
             payload=json.dumps(payload).encode('utf-8')
         )
@@ -92,22 +126,4 @@ def one_light_command(name, command):
         print(e)
         raise ChaliceViewError('A server error has occurred.')
 
-    return payload
-
-
-def command_switch(argument):
-    COMMANDS = {
-        'on': {'power': True},
-        'off': {'power': False}
-    }
-    try:
-        return COMMANDS[argument]
-    except KeyError:
-        raise BadRequestError('Unknown command "%s", valid choices are: %s' % (
-            argument, ', '.join(COMMANDS.keys())))
-
-def light_serializer(obj):
-    return {
-        "id": obj["thingName"],
-        "connectivity": obj["connectivity"]
-    }
+    return serializers.command(id, payload)
