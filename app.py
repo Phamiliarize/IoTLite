@@ -67,48 +67,48 @@ def list_light():
 @app.route('/light/{id}', methods=['GET', 'DELETE'])
 def one_light(id):
     request = app.current_request
-        try:
-            if request.method == 'GET':
-                response = awsIot.search_index(
-                    queryString='thingName:{}'.format(id)
-                )
-                return serializers.light(response['things'][0])
-            if request.method == 'DELETE':
-                certARN = client.list_thing_principals(
-                    thingName={id}
-                )['principals'][0]
+    try:
+        if request.method == 'GET':
+            response = awsIot.search_index(
+                queryString='thingName:{}'.format(id)
+            )
+            return serializers.light(response['things'][0])
+        if request.method == 'DELETE':
+            certARN = awsIot.list_thing_principals(
+                thingName={id}
+            )['principals'][0]
 
-                # 非同期なので、今すぐ消すことができないです。
-                client.detach_thing_principal(
-                    thingName=id,
-                    principal=certARN
-                )
+            # 非同期なので、今すぐ消すことができないです。
+            response = awsIot.detach_thing_principal(
+                thingName=id,
+                principal=certARN
+            )
 
-                # set PENDING_DELETE attribute, add to delete sqs
-                
-                # SQSで
-                # inactivate_cert = awsIot.update_certificate(
-                #     certificateId=certARN,
-                #     newStatus='INACTIVE'
-                # )
+            # set PENDING_DELETE attribute, add to delete sqs
+            
+            # SQSで
+            # inactivate_cert = awsIot.update_certificate(
+            #     certificateId=certARN,
+            #     newStatus='INACTIVE'
+            # )
 
-                # delete_cert = client.delete_certificate(
-                #     certificateId=certARN,
-                #     forceDelete=True
-                # )
+            # delete_cert = client.delete_certificate(
+            #     certificateId=certARN,
+            #     forceDelete=True
+            # )
 
-                # delete_thing = awsIot.delete_thing(
-                #     thingName=id
-                # )
-            return Response(body=None,
-                    status_code=204,
-                    headers={'Content-Type': 'application/json'})
+            # delete_thing = awsIot.delete_thing(
+            #     thingName=id
+            # )
+        return Response(body=None,
+                status_code=204,
+                headers={'Content-Type': 'application/json'})
 
-        except (IndexError, awsIot.exceptions.ResourceNotFoundException):
-            raise NotFoundError('The requested light could not be found.')
-        except Exception as e:
-            print(e)
-            raise ChaliceViewError('A server error has occurred.')
+    except (IndexError, awsIot.exceptions.ResourceNotFoundException):
+        raise NotFoundError('The requested light could not be found.')
+    except Exception as e:
+        print(e)
+        raise ChaliceViewError('A server error has occurred.')
 
 
 # ライトを１台にコマンドを送信
