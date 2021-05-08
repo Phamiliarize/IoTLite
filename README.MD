@@ -83,6 +83,7 @@ Deleting Rest API: abcd4kwyl4
 Deleting function aws:arn:lambda:region:123456789:helloworld-dev
 Deleting IAM Role helloworld-dev
 ```
+
 ### 機能
 - Device Onboarding
 -- Register Device
