@@ -1,4 +1,4 @@
-# IoTLite
+# IoTLite (POC)
 
 The Lite Solution for AWS IoT Core driven lights.
 

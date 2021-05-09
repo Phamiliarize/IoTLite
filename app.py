@@ -10,7 +10,6 @@ iot_data = boto3.client('iot-data')
 iot = boto3.client('iot')
 sqs = boto3.client('sqs')
 
-
 @app.route('/')
 def index():
     return {'hello': 'world'}
@@ -133,3 +132,31 @@ def one_light_command(id, command):
         raise ChaliceViewError('A server error has occurred.')
 
     return serializers.command(id, payload)
+
+@app.on_sqs_message(queue='deletion-queue', batch_size=1)
+def handle_sqs_message(event):
+    for record in event:
+        payload = json.loads(record.body)
+        try:
+            
+            delete_cert = iot.delete_certificate(
+                certificateId=payload["certARN"].split("/")[1],
+                forceDelete=True
+            )
+        
+            delete_thing = iot.delete_thing(
+                thingName=payload["thingName"]
+            )
+            
+            response = sqs.delete_message(
+                QueueUrl='https://sqs.ap-northeast-1.amazonaws.com/090509233173/deletion-queue',
+                ReceiptHandle=record.receiptHandle
+            )
+            
+        except iot.exceptions.ResourceNotFoundException:
+            return 'The requested light could not be found.'
+        except Exception as e:
+            print(e)
+            return 'An error occurred.'
+            
+    return true

@@ -7,6 +7,19 @@
       "role_name": "IoTLite-dev"
     },
     {
+      "name": "handle_sqs_message",
+      "resource_type": "lambda_function",
+      "lambda_arn": "arn:aws:lambda:ap-northeast-1:090509233173:function:IoTLite-dev-handle_sqs_message"
+    },
+    {
+      "name": "handle_sqs_message-sqs-event-source",
+      "resource_type": "sqs_event",
+      "queue_arn": "arn:aws:sqs:ap-northeast-1:090509233173:deletion-queue",
+      "event_uuid": "1e26717a-7615-4d7e-a0b7-4ef1aa53b519",
+      "queue": "deletion-queue",
+      "lambda_arn": "arn:aws:lambda:ap-northeast-1:090509233173:function:IoTLite-dev-handle_sqs_message"
+    },
+    {
       "name": "api_handler",
       "resource_type": "lambda_function",
       "lambda_arn": "arn:aws:lambda:ap-northeast-1:090509233173:function:IoTLite-dev"
