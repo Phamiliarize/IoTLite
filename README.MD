@@ -87,16 +87,22 @@ Deleting IAM Role helloworld-dev
 ```
 
 ### 機能
-- Device Onboarding
--- Register Device
---- Created Thing + Cert + Assigns dynamic policy that allows communication on channels of the thing only
 
-- Device Status
--- List Devices (Connection Status Included)
--- Get Device (Connection Status Included)
+REST APIバックエンドにHTTPリクエストで様々な機能を使えます。
 
-- Device Control
--- Commands
+- ライト管理
+  - 登録（クライエント証明書など）
+  - 削除
+  - 一覧・一台の情報
+    - デバイスの接続性
+- ライトとの通信
+  - MQTTでほぼリアルタイムな双方向通信は可能
+  - それぞれのライトが自分のトピックだけにセキュアにPub/Subするのは可能
+    - 遠隔制御用：　`<device_id>/command`にライトがSubできる
+    - データ通信： `<device_id>/data`にライトがPubできる
+    - `lightPolicy`を編集でトピックを簡単に追加できる
+- 遠隔制御
+  - ライトの`command`MQTTトピックにコマンドを送信するのは可能
 
 ### インターフェース仕様書
 
@@ -104,3 +110,4 @@ Deleting IAM Role helloworld-dev
 ### 将来の延長
 - 今回、ユーザ認証システムが顧客要件に入れていないので、実装しないですが、することになったら、Chaliceで簡単に[Cognito Userpool](https://aws.github.io/chalice/topics/authorizers.html#amazon-cognito-user-pools)を統合するできます。実装することをおすすめです。
 - 新しいコマンドが自由にCOMMANDSのdictionaryに追加できます。
+- Shadowを使って、電源オフの時にもコマンド受けることが対応できるようになります。

@@ -13,11 +13,10 @@
       {
         "Effect": "Allow",
         "Action": [
-          "iot:Publish",
-          "iot:Receive"
+          "iot:Publish"
         ],
         "Resource": [
-          "arn:aws:iot:<REGION>:<ACCOUNT_ID>:topic/${iot:Connection.Thing.ThingName}/*"
+          "arn:aws:iot:<REGION>:<ACCOUNT_ID>:topic/${iot:Connection.Thing.ThingName}/data"
         ]
       },
       {
@@ -26,7 +25,16 @@
           "iot:Subscribe"
         ],
         "Resource": [
-          "arn:aws:iot:<REGION>:<ACCOUNT_ID>:topicfilter/${iot:Connection.Thing.ThingName}/*"
+          "arn:aws:iot:<REGION>:<ACCOUNT_ID>:topicfilter/${iot:Connection.Thing.ThingName}/command"
+        ]
+      },
+      {
+        "Effect": "Allow",
+        "Action": [
+          "iot:Receive"
+        ],
+        "Resource": [
+          "arn:aws:iot:<REGION>:<ACCOUNT_ID>:topic/${iot:Connection.Thing.ThingName}/command"
         ]
       }
     ]
