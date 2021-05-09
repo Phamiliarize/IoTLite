@@ -88,10 +88,8 @@ Deleting IAM Role helloworld-dev
 
 ### 機能
 
-REST APIバックエンドにHTTPリクエストで様々な機能を使えます。
-
 - ライト管理
-  - 登録（クライエント証明書など）
+  - 登録（クライアント証明書など）
   - 削除
   - 一覧・一台の情報
     - デバイスの接続性
@@ -104,10 +102,38 @@ REST APIバックエンドにHTTPリクエストで様々な機能を使えま�
 - 遠隔制御
   - ライトの`command`MQTTトピックにコマンドを送信するのは可能
 
+## 開発ノート
+
+### ユニットテスト
+
+ユニットテストのため、pytestを使います。venvにpytestを`pip install pytest`でインストールしてください。
+それで、`pytest`のコマンドでテストを実行できます。
+
+```
+$ pytest
+============================================================= test session starts =============================================================
+platform darwin -- Python 3.9.1, pytest-6.2.4, py-1.10.0, pluggy-0.13.1
+rootdir: /Users/user/CMIoT/IoTLite
+collected 1 item                                                                                                                              
+
+tests/test_app.py .                                                                                                                     [100%]
+
+============================================================== 1 passed in 0.39s ==============================================================
+```
+
+テストの書き方について、詳しくは[こちら](https://aws.github.io/chalice/topics/testing.html)です。
+
+
 ### インターフェース仕様書
 
+スマホアプリやウェブアプリなどがREST APIにHTTPリクエストで様々な機能を使えます。
+- [REST API仕様書](https://docs.google.com/document/d/1fnjy7iLFiI1Ft5a_Mmju6QddofU-WDel18-SHy0zIek/edit?usp=sharing)
+
+ライト(デバイス）側で、クライアント証明書認証でMQTTトピックに接続して、データを通信できます。
+- [MQTT仕様書](https://docs.google.com/document/d/1jazI5Go3qY8vfn5BJwxOZe2O8fKrb4ZMOFMKz2UryVw/edit?usp=sharing)
 
 ### 将来の延長
 - 今回、ユーザ認証システムが顧客要件に入れていないので、実装しないですが、することになったら、Chaliceで簡単に[Cognito Userpool](https://aws.github.io/chalice/topics/authorizers.html#amazon-cognito-user-pools)を統合するできます。実装することをおすすめです。
+  - Cognitoを実装の後のステップは、デバイスレベルかグループレベルのアクセス権限
 - 新しいコマンドが自由にCOMMANDSのdictionaryに追加できます。
-- Shadowを使って、電源オフの時にもコマンド受けることが対応できるようになります。
+- Shadowを使ったら、電源オフの時にもコマンド受けることが対応できるようになります。接続してから、Shadowからステートを更新

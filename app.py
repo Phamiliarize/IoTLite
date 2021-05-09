@@ -5,17 +5,14 @@ import uuid
 from chalice import Chalice, BadRequestError, ChaliceViewError, NotFoundError, Response
 from chalicelib import serializers, commands
 
+
 app = Chalice(app_name='IoTLite')
 iot_data = boto3.client('iot-data')
 iot = boto3.client('iot')
 sqs = boto3.client('sqs')
 
-@app.route('/')
-def index():
-    return {'hello': 'world'}
 
-
-# GET: ライト一覧を取得 POST: 新しいライトを登録
+# GET: ライト一覧を取得 POST: 新しいライトを登録 (入力はない)
 @app.route('/light', methods=['GET', 'POST'])
 def list_light():
     request = app.current_request
@@ -24,6 +21,8 @@ def list_light():
         search_kwargs = dict(queryString='thingName:* AND -attributes.PENDING_DELETE:true')
         if request.query_params and request.query_params.get('nextToken'):
             search_kwargs['nextToken'] = request.query_params.get('nextToken')
+        if request.query_params and request.query_params.get('limit'):
+            search_kwargs['maxResults'] = int(request.query_params.get('limit'))
         try:
             # handle next token/pagination
             response = iot.search_index(**search_kwargs)
@@ -132,6 +131,8 @@ def one_light_command(id, command):
 
     return serializers.command(id, payload)
 
+
+# ChaliceでSQSのラムダ管理する
 @app.on_sqs_message(queue='deletion-queue', batch_size=1)
 def handle_sqs_message(event):
     for record in event:
@@ -149,7 +150,8 @@ def handle_sqs_message(event):
             
             response = sqs.delete_message(
                 QueueUrl='https://sqs.ap-northeast-1.amazonaws.com/090509233173/deletion-queue',
-                ReceiptHandle=record.receiptHandle
+                ReceiptHandle=getattr(record, 'receiptHandle', record.receipt_handle)
             )
+            return response
         except (Exception, iot.exceptions.ResourceNotFoundException) as e:
             app.log.error(e)
