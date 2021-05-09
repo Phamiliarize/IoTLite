@@ -27,7 +27,6 @@ def list_light():
         try:
             # handle next token/pagination
             response = iot.search_index(**search_kwargs)
-            print(response)
             return {
                 'lights': [serializers.light(thing) for thing in response['things']],
                 'nextToken': response.get('nextToken', None)
@@ -35,7 +34,7 @@ def list_light():
         except iot.exceptions.InvalidRequestException as e:
             raise BadRequestError(e)
         except (Exception, KeyError) as e:
-            print(e)
+            app.log.error(e)
             raise ChaliceViewError('A server error has occurred.')
     if request.method == 'POST':
         lightId = str(uuid.uuid4())
@@ -60,7 +59,7 @@ def list_light():
 
             return serializers.new_device(thing, cert)
         except (Exception, KeyError) as e:
-            print(e)
+            app.log.error(e)
             raise ChaliceViewError(e)
 
 
@@ -112,7 +111,7 @@ def one_light(id):
     except (IndexError, iot.exceptions.ResourceNotFoundException):
         raise NotFoundError('The requested light could not be found.')
     except Exception as e:
-        print(e)
+        app.log.error(e)
         raise ChaliceViewError('A server error has occurred.')
 
 
@@ -128,7 +127,7 @@ def one_light_command(id, command):
             payload=json.dumps(payload).encode('utf-8')
         )
     except Exception as e:
-        print(e)
+        app.log.error(e)
         raise ChaliceViewError('A server error has occurred.')
 
     return serializers.command(id, payload)
@@ -152,11 +151,5 @@ def handle_sqs_message(event):
                 QueueUrl='https://sqs.ap-northeast-1.amazonaws.com/090509233173/deletion-queue',
                 ReceiptHandle=record.receiptHandle
             )
-            
-        except iot.exceptions.ResourceNotFoundException:
-            return 'The requested light could not be found.'
-        except Exception as e:
-            print(e)
-            return 'An error occurred.'
-            
-    return true
+        except (Exception, iot.exceptions.ResourceNotFoundException) as e:
+            app.log.error(e)
