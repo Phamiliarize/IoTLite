@@ -75,6 +75,8 @@ Resources deployed:
   - Rest API URL: https://abcd.execute-api.us-west-2.amazonaws.com/api/
 ```
 
+deployしたリージョンのIoT Coreの方で、`lightPolicy`のポリシーを登録してください。中身は`lightPolicy.json`の方です。リージョンとアカウントIDを適切に置き換えてください。それで、REST API URLを使えます。
+
 調査が終わってから、作ったリソースが`chalice delete`で簡単に消せます。
 
 ```

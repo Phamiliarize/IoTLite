@@ -2,12 +2,13 @@ import boto3
 import json
 import uuid
 
-from chalice import Chalice, BadRequestError, ChaliceViewError, NotFoundError
+from chalice import Chalice, BadRequestError, ChaliceViewError, NotFoundError, Response
 from chalicelib import serializers, commands
 
 app = Chalice(app_name='IoTLite')
-awsIotData = boto3.client('iot-data')
-awsIot = boto3.client('iot')
+iot_data = boto3.client('iot-data')
+iot = boto3.client('iot')
+sqs = boto3.client('sqs')
 
 
 @app.route('/')
@@ -20,18 +21,19 @@ def index():
 def list_light():
     request = app.current_request
     if request.method == 'GET':
-        search_kwargs = dict(queryString='thingName:*')
+        # PENDING_DELETEがソフト削除担っているので、表示しない
+        search_kwargs = dict(queryString='thingName:* AND -attributes.PENDING_DELETE:true')
         if request.query_params and request.query_params.get('nextToken'):
             search_kwargs['nextToken'] = request.query_params.get('nextToken')
         try:
             # handle next token/pagination
-            response = awsIot.search_index(**search_kwargs)
+            response = iot.search_index(**search_kwargs)
             print(response)
             return {
                 'lights': [serializers.light(thing) for thing in response['things']],
                 'nextToken': response.get('nextToken', None)
             }
-        except awsIot.exceptions.InvalidRequestException as e:
+        except iot.exceptions.InvalidRequestException as e:
             raise BadRequestError(e)
         except (Exception, KeyError) as e:
             print(e)
@@ -39,20 +41,20 @@ def list_light():
     if request.method == 'POST':
         lightId = str(uuid.uuid4())
         try:
-            cert = awsIot.create_keys_and_certificate(
+            cert = iot.create_keys_and_certificate(
                 setAsActive=True
             )
 
-            attach_policy = awsIot.attach_policy(
+            attach_policy = iot.attach_policy(
                 policyName='lightPolicy',
                 target=cert['certificateArn']
             )
 
-            thing = awsIot.create_thing(
+            thing = iot.create_thing(
                 thingName=lightId,
             )
 
-            attach_cert = awsIot.attach_thing_principal(
+            attach_cert = iot.attach_thing_principal(
                 thingName=lightId,
                 principal=cert['certificateArn']
             )
@@ -69,42 +71,46 @@ def one_light(id):
     request = app.current_request
     try:
         if request.method == 'GET':
-            response = awsIot.search_index(
-                queryString='thingName:{}'.format(id)
+            response = iot.search_index(
+                queryString='thingName:{} AND -attributes.PENDING_DELETE:true'.format(id)
             )
             return serializers.light(response['things'][0])
         if request.method == 'DELETE':
-            certARN = awsIot.list_thing_principals(
-                thingName={id}
+            certARN = iot.list_thing_principals(
+                thingName=id
             )['principals'][0]
 
             # 非同期なので、今すぐ消すことができないです。
-            response = awsIot.detach_thing_principal(
+            detach_cert = iot.detach_thing_principal(
                 thingName=id,
                 principal=certARN
             )
 
-            # set PENDING_DELETE attribute, add to delete sqs
-            
-            # SQSで
-            # inactivate_cert = awsIot.update_certificate(
-            #     certificateId=certARN,
-            #     newStatus='INACTIVE'
-            # )
+            response = iot.update_thing(
+                thingName=id,
+                attributePayload={
+                    'attributes': {
+                        'PENDING_DELETE': 'true'
+                    },
+                    'merge': True
+                }
+            )
 
-            # delete_cert = client.delete_certificate(
-            #     certificateId=certARN,
-            #     forceDelete=True
-            # )
+            inactivate_cert = iot.update_certificate(
+                certificateId=certARN.split("/")[1],
+                newStatus='INACTIVE'
+            )
 
-            # delete_thing = awsIot.delete_thing(
-            #     thingName=id
-            # )
+            # ハード削除を非同期にするため、SQSにMSGを送信
+            SQS = sqs.send_message(
+                QueueUrl='https://sqs.ap-northeast-1.amazonaws.com/090509233173/deletion-queue',
+                MessageBody=json.dumps({"certARN":certARN,"thingName":id})
+            )
         return Response(body=None,
                 status_code=204,
                 headers={'Content-Type': 'application/json'})
 
-    except (IndexError, awsIot.exceptions.ResourceNotFoundException):
+    except (IndexError, iot.exceptions.ResourceNotFoundException):
         raise NotFoundError('The requested light could not be found.')
     except Exception as e:
         print(e)
@@ -117,7 +123,7 @@ def one_light(id):
 def one_light_command(id, command):
     payload = commands.switch(command)
     try:
-        response = awsIotData.publish(
+        response = iot_data.publish(
             topic='{}/command'.format(id),
             qos=1,
             payload=json.dumps(payload).encode('utf-8')
