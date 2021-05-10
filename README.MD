@@ -65,7 +65,7 @@ AWSのサーバーレスAPIを簡単にdeployするために[AWS Chalice](https:
 
 ##### 1. 基盤のインフラ
 
-基盤のインフラは、CloudFormationスタックでdeployします。CLIまたはAWSコンソールのGUIを介して、`CloudFormation.yaml`のテンプレートファイルをアップロードしてスタックを作成します。
+基盤のインフラは、CloudFormationスタックでdeployします。[CLI](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/cloudformation/create-stack.html)または[AWSコンソールのGUI](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/cfn-console-create-stack.html)を介して、`CloudFormation.yaml`のテンプレートファイルをアップロードしてスタックを作成します。
 
 REST APIの設定で必要なので、「Output」値を手元に置いておいてください。
 
