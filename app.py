@@ -1,3 +1,4 @@
+import os
 import boto3
 import json
 import uuid
@@ -7,6 +8,10 @@ from chalicelib import serializers, commands
 
 
 app = Chalice(app_name='IoTLite')
+
+DEL_SQS_URL = os.getenv("DELETE_SQS_URL", default="https://fake.ap-north-east1.aws.com/queue/0123456789/IoTLite-delete-queue") # ユニットテスト用、default
+DEL_SQS_NAME = os.getenv("DELETE_SQS_NAME", default="IoTLite-delete-queue")
+
 iot_data = boto3.client('iot-data')
 iot = boto3.client('iot')
 sqs = boto3.client('sqs')
@@ -43,7 +48,7 @@ def list_light():
             )
 
             attach_policy = iot.attach_policy(
-                policyName='lightPolicy',
+                policyName='IoTLiteLightPolicy',
                 target=cert['certificateArn']
             )
 
@@ -100,7 +105,7 @@ def one_light(id):
 
             # ハード削除を非同期にするため、SQSにMSGを送信
             SQS = sqs.send_message(
-                QueueUrl='https://sqs.ap-northeast-1.amazonaws.com/090509233173/deletion-queue',
+                QueueUrl=DEL_SQS_URL,
                 MessageBody=json.dumps({"certARN":certARN,"thingName":id})
             )
         return Response(body=None,
@@ -135,7 +140,7 @@ def one_light_command(id, command):
 
 
 # ChaliceでSQSのラムダ管理する
-@app.on_sqs_message(queue='deletion-queue', batch_size=1)
+@app.on_sqs_message(queue=DEL_SQS_NAME, batch_size=1)
 def handle_sqs_message(event):
     for record in event:
         payload = json.loads(record.body)
@@ -151,7 +156,7 @@ def handle_sqs_message(event):
             )
             
             response = sqs.delete_message(
-                QueueUrl='https://sqs.ap-northeast-1.amazonaws.com/090509233173/deletion-queue',
+                QueueUrl=DEL_SQS_URL,
                 ReceiptHandle=getattr(record, 'receiptHandle', record.receipt_handle)
             )
             return response

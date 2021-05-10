@@ -1,0 +1,65 @@
+Resources:
+  IoTLiteDeadletterQueue:
+    Type: AWS::SQS::Queue
+    Properties: 
+      MessageRetentionPeriod: 86400
+      QueueName: IoTLite-dead-queue
+
+  IoTLiteDeletionQueue:
+    Type: AWS::SQS::Queue
+    Properties: 
+      DelaySeconds: 5
+      QueueName: IoTLite-delete-queue
+      RedrivePolicy:
+        deadLetterTargetArn : !GetAtt IoTLiteDeadletterQueue.Arn
+        maxReceiveCount : 1
+      VisibilityTimeout: 75
+
+
+  IoTLiteLightPolicy:
+    Type: AWS::IoT::Policy
+    Properties: 
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Action:
+          - iot:Connect
+          Resource:
+          - !Join
+            - ''
+            - - !Sub 'arn:aws:iot:${AWS::Region}:${AWS::AccountId}:'
+              - 'client/${iot:Connection.Thing.ThingName}'
+        - Effect: Allow
+          Action:
+          - iot:Publish
+          Resource:
+          - !Join
+            - ''
+            - - !Sub 'arn:aws:iot:${AWS::Region}:${AWS::AccountId}:'
+              - 'topic/${iot:Connection.Thing.ThingName}/data'
+        - Effect: Allow
+          Action:
+          - iot:Subscribe
+          Resource:
+          - !Join
+            - ''
+            - - !Sub 'arn:aws:iot:${AWS::Region}:${AWS::AccountId}:'
+              - 'topicfilter/${iot:Connection.Thing.ThingName}/command'
+        - Effect: Allow
+          Action:
+          - iot:Receive
+          Resource:
+          - !Join
+            - ''
+            - - !Sub 'arn:aws:iot:${AWS::Region}:${AWS::AccountId}:'
+              - 'topic/${iot:Connection.Thing.ThingName}/command'
+      PolicyName: IoTLiteLightPolicy
+
+Outputs:
+  DeletionSQSURL:
+    Value: !Ref IoTLiteDeletionQueue
+    Description: The url of the deletion queue
+  DeletionSQSName:
+    Value: !GetAtt IoTLiteDeletionQueue.QueueName
+    Description: The name of the deletion queue

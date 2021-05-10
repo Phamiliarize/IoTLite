@@ -36,55 +36,8 @@ AWSのサーバーレスAPIを簡単にdeployするために[AWS Chalice](https:
   - API Gateway
   - IoT Core
   - Lambda
-- Python 3.7+
-
-### 使い方
-まずはlocalでAWSのSDKやCLI Credentialsを設定してください。様々な設定仕方があるんですが、`~/.aws/config`でやるのはおすすめです。詳しくは[こちら](https://aws.github.io/chalice/quickstart.html#credentials)です。
-
-次、Python3.7のVENVを作ってactivateします。
-
-```
-python3 -m venv venv
-. /bin/activate
-```
-
-AWSのchaliceをインストールします。後、`help`でインストールしたことを確認できます。
-
-```
-pip install chalice
-chalice --help
-```
-
-次、このリポジトリをクローンして、`cd`でフォルダーに入ります。
-
-```
-git clone git@github.com:Phamiliarize/IoTLite.git
-cd IoTLite
-```
-
-AWSに`chalice deploy`でdeployします。
-
-```
-$ chalice deploy
-Creating deployment package.
-Creating IAM role: helloworld-dev
-Creating lambda function: helloworld-dev
-Creating Rest API
-Resources deployed:
-  - Lambda ARN: arn:aws:lambda:us-west-2:12345:function:helloworld-dev
-  - Rest API URL: https://abcd.execute-api.us-west-2.amazonaws.com/api/
-```
-
-deployしたリージョンのIoT Coreの方で、`lightPolicy`のポリシーを登録してください。中身は`lightPolicy.json`の方です。リージョンとアカウントIDを適切に置き換えてください。それで、REST API URLを使えます。
-
-調査が終わってから、作ったリソースが`chalice delete`で簡単に消せます。
-
-```
-$ chalice delete
-Deleting Rest API: abcd4kwyl4
-Deleting function aws:arn:lambda:region:123456789:helloworld-dev
-Deleting IAM Role helloworld-dev
-```
+  - SQS
+- Python 3.8+
 
 ### 機能
 
@@ -102,9 +55,66 @@ Deleting IAM Role helloworld-dev
 - 遠隔制御
   - ライトの`command`MQTTトピックにコマンドを送信するのは可能
 
-## 開発ノート
+### 開発ノート
 
-### ユニットテスト
+#### AWSにDeploy
+
+まずはlocalでAWSのSDKやCLI Credentialsを設定してください。様々な設定仕方があるんですが、`~/.aws/config`でやるのはおすすめです。詳しくは[こちら](https://aws.github.io/chalice/quickstart.html#credentials)です。
+
+デプロイメントには2つの部分があります。基盤のインフラとREST API
+
+##### 1. 基盤のインフラ
+
+基盤のインフラは、CloudFormationスタックでdeployします。CLIまたはAWSコンソールのGUIを介して、`CloudFormation.yaml`のテンプレートファイルをアップロードしてスタックを作成します。
+
+REST APIの設定で必要なので、「Output」値を手元に置いておいてください。
+
+##### 2. REST API
+
+chaliceで、一つのCloudFormation packageを生成できますが、`chalice deploy`の色々な機能が使えないようになります。Convenienceのため、REST APIが他のインフラから別でchaliceの力でdeployします。
+
+まず、PythonのVENVを作ってactivateします。3.8で作ってください。
+
+```
+python3 -m venv venv
+. /bin/activate
+```
+
+次、このリポジトリをクローンして、`cd`でフォルダーに入ります。
+
+```
+git clone git@github.com:Phamiliarize/IoTLite.git
+cd IoTLite
+```
+
+次、AWSのchaliceやpytestなどをインストールします。後、`help`でインストールしたことを確認できます。
+
+```
+pip install -r requirements.txt
+chalice --help
+```
+
+REST APIをAWSに`chalice deploy`でdeployします。
+
+```
+$ chalice deploy
+...
+Resources deployed:
+  - Lambda ARN: arn:aws:lambda:ap-northeast-1:12345:function:IoTLite-dev
+  - Rest API URL: https://abcd.execute-api.ap-northeast-1.amazonaws.com/api/
+```
+
+調査が終わってから、作ったリソースが`chalice delete`で簡単に消せます。
+
+```
+$ chalice delete
+Deleting Rest API: IoTLite-dev
+...
+```
+
+CloudFormationのスタックは、CloudFormationの方で消せます。
+
+#### ユニットテスト
 
 ユニットテストのため、pytestを使います。venvにpytestを`pip install pytest`でインストールしてください。
 それで、`pytest`のコマンドでテストを実行できます。
@@ -124,7 +134,7 @@ tests/test_app.py .                                                             
 テストの書き方について、詳しくは[こちら](https://aws.github.io/chalice/topics/testing.html)です。
 
 
-### インターフェース仕様書
+#### インターフェース仕様書
 
 スマホアプリやウェブアプリなどがREST APIにHTTPリクエストで様々な機能を使えます。
 - [REST API仕様書](https://docs.google.com/document/d/1fnjy7iLFiI1Ft5a_Mmju6QddofU-WDel18-SHy0zIek/edit?usp=sharing)
@@ -132,8 +142,9 @@ tests/test_app.py .                                                             
 ライト(デバイス）側で、クライアント証明書認証でMQTTトピックに接続して、データを通信できます。
 - [MQTT仕様書](https://docs.google.com/document/d/1jazI5Go3qY8vfn5BJwxOZe2O8fKrb4ZMOFMKz2UryVw/edit?usp=sharing)
 
-### 将来の延長
+#### 将来の延長
 - 今回、ユーザ認証システムが顧客要件に入れていないので、実装しないですが、することになったら、Chaliceで簡単に[Cognito Userpool](https://aws.github.io/chalice/topics/authorizers.html#amazon-cognito-user-pools)を統合するできます。実装することをおすすめです。
   - Cognitoを実装の後のステップは、デバイスレベルかグループレベルのアクセス権限
 - 新しいコマンドが自由にCOMMANDSのdictionaryに追加できます。
 - Shadowを使ったら、電源オフの時にもコマンド受けることが対応できるようになります。接続してから、Shadowからステートを更新
+- Edge caseのテストを増える

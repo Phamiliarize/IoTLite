@@ -1,3 +1,4 @@
+import os
 import json
 import uuid
 import pytest
@@ -123,7 +124,7 @@ def test_list_light_post():
     iot_stub.add_response(
         'attach_policy',
         expected_params={
-            'policyName': 'lightPolicy',
+            'policyName': 'IoTLiteLightPolicy',
             'target': 'e9Bo7GlWCDtZefEZBGGgnI0szWYIhU1k9BUY81LqB04pmM0mydu2WmWIvqg6PfrV'
         },
         service_response={}
@@ -285,7 +286,7 @@ def test_one_light_delete():
     sqs_stub.add_response(
         'send_message',
         expected_params={
-            'QueueUrl': 'https://sqs.ap-northeast-1.amazonaws.com/090509233173/deletion-queue',
+            'QueueUrl': app.DEL_SQS_URL,
             'MessageBody': json.dumps({"certARN":certARN,"thingName":lightId})
         },
         service_response={
@@ -360,7 +361,7 @@ def test_handle_sqs_message():
     sqs_stub.add_response(
         'delete_message',
         expected_params={
-            'QueueUrl': 'https://sqs.ap-northeast-1.amazonaws.com/090509233173/deletion-queue',
+            'QueueUrl': app.DEL_SQS_URL,
             'ReceiptHandle': 'receipt-handle'
         },
         service_response={}
@@ -378,7 +379,7 @@ def test_handle_sqs_message():
                 try:
                     response = client.lambda_.invoke(
                         "handle_sqs_message",
-                        client.events.generate_sqs_event([message], queue_name='deletion-queue')
+                        client.events.generate_sqs_event([message], queue_name=app.DEL_SQS_NAME)
                     )
                     assert response.payload == {}
                 except Exception:

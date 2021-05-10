@@ -3,7 +3,11 @@
   "app_name": "IoTLite",
   "stages": {
     "dev": {
-      "api_gateway_stage": "api"
+      "api_gateway_stage": "api",
+      "environment_variables": {
+        "DELETE_SQS_URL": "DeletionSQSURL",
+        "DELETE_SQS_NAME": "IoTLite-delete-queue"
+      }
     }
   }
 }
