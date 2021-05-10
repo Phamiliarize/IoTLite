@@ -1,6 +1,6 @@
 # IoTLite (POC)
 
-The Lite Solution for AWS IoT Core driven lights.
+The Lite Solution for AWS IoT Core driven lights. Packaged version requires 0 additional dependencies.
 
 LEDライトの操作(IoT)用サーバーレスREST APIです。
 
@@ -90,7 +90,7 @@ cd IoTLite
 次、AWSのchaliceやpytestなどをインストールします。後、`help`でインストールしたことを確認できます。
 
 ```
-pip install -r requirements.txt
+pip install -r venvRequirements.txt
 chalice --help
 ```
 
