@@ -118,13 +118,15 @@ def one_light(id):
 # chancelib/commandsで新しいコマンドを追加
 @app.route('/light/{id}/command/{command}', methods=['POST'])
 def one_light_command(id, command):
-    payload = commands.switch(command)
     try:
+        payload = commands.switch(command)
         response = iot_data.publish(
             topic='{}/command'.format(id),
             qos=1,
             payload=json.dumps(payload).encode('utf-8')
         )
+    except KeyError:
+        raise BadRequestError('Unknown command "{}"'.format(command,))
     except Exception as e:
         app.log.error(e)
         raise ChaliceViewError('A server error has occurred.')

@@ -233,7 +233,9 @@ def test_one_light_get():
 def test_one_light_delete():
     lightId = str(uuid.uuid4())
     thingId = str(uuid.uuid4())
+    certARN = 'aws:stuff:regions:arn:cert/e9Bo7GlWCDtZefEZBGGgnI0szWYIhU1k9BUY81LqB04pmM0mydu2WmWIvqg6PfrV'
     iot_stub = Stubber(app.iot)
+    sqs_stub = Stubber(app.sqs)
 
     iot_stub.add_response(
         'list_thing_principals',
@@ -242,66 +244,65 @@ def test_one_light_delete():
         },
         service_response={
             'principals': [
-                'e9Bo7GlWCDtZefEZBGGgnI0szWYIhU1k9BUY81LqB04pmM0mydu2WmWIvqg6PfrV',
+                certARN
             ],
             'nextToken': 'string'
         }
     )
 
-    # here
     iot_stub.add_response(
         'detach_thing_principal',
         expected_params={
             'thingName': lightId,
+            'principal': certARN
+        },
+        service_response={}
+    )
+
+    iot_stub.add_response(
+        'update_thing',
+        expected_params={
+            'thingName': lightId,
+            'attributePayload': {
+                'attributes': {
+                    'PENDING_DELETE': 'true'
+                },
+                'merge': True
+            }
+        },
+        service_response={}
+    )
+
+    iot_stub.add_response(
+        'update_certificate',
+        expected_params={
+            'certificateId': certARN.split("/")[1],
+            'newStatus': 'INACTIVE'
+        },
+        service_response={}
+    )
+
+    sqs_stub.add_response(
+        'send_message',
+        expected_params={
+            'QueueUrl': 'https://sqs.ap-northeast-1.amazonaws.com/090509233173/deletion-queue',
+            'MessageBody': json.dumps({"certARN":certARN,"thingName":lightId})
         },
         service_response={
-            'principals': [
-                'e9Bo7GlWCDtZefEZBGGgnI0szWYIhU1k9BUY81LqB04pmM0mydu2WmWIvqg6PfrV',
-            ],
-            'nextToken': 'string'
+            'MD5OfMessageBody': 'string',
+            'MD5OfMessageAttributes': 'string',
+            'MD5OfMessageSystemAttributes': 'string',
+            'MessageId': 'string',
+            'SequenceNumber': 'string'
         }
     )
 
-
     with iot_stub:
-        with Client(app.app) as client:
-            response = client.http.delete('/light/{}'.format(lightId))
-            assert response.status_code == 204
+        with sqs_stub:
+            with Client(app.app) as client:
+                response = client.http.delete('/light/{}'.format(lightId))
+                assert response.status_code == 204
 
-#         if request.method == 'DELETE':
-#             certARN = iot.list_thing_principals(
-#                 thingName=id
-#             )['principals'][0]
-
-#             # 非同期なので、今すぐ消すことができないです。
-#             detach_cert = iot.detach_thing_principal(
-#                 thingName=id,
-#                 principal=certARN
-#             )
-
-#             response = iot.update_thing(
-#                 thingName=id,
-#                 attributePayload={
-#                     'attributes': {
-#                         'PENDING_DELETE': 'true'
-#                     },
-#                     'merge': True
-#                 }
-#             )
-
-#             inactivate_cert = iot.update_certificate(
-#                 certificateId=certARN.split("/")[1],
-#                 newStatus='INACTIVE'
-#             )
-
-#             # ハード削除を非同期にするため、SQSにMSGを送信
-#             SQS = sqs.send_message(
-#                 QueueUrl='https://sqs.ap-northeast-1.amazonaws.com/090509233173/deletion-queue',
-#                 MessageBody=json.dumps({"certARN":certARN,"thingName":id})
-#             )
-#         return Response(body=None,
-#                 status_code=204,
-#                 headers={'Content-Type': 'application/json'})
 
 def test_one_light_command():
     lightId = str(uuid.uuid4())
@@ -328,6 +329,10 @@ def test_one_light_command():
                     "power": True
                 }
             }
+
+            # 同じテストで、対応していないコマンドがちゃんと４００に確認する
+            response = client.http.post('/light/{}/command/TESTME'.format(lightId))
+            assert response.status_code == 400
 
 
 def test_handle_sqs_message():
