@@ -61,7 +61,9 @@ def list_light():
                 principal=cert['certificateArn']
             )
 
-            return serializers.new_device(thing, cert)
+            return Response(body=serializers.new_device(thing, cert),
+                status_code=201,
+                headers={'Content-Type': 'application/json'})
         except (Exception, KeyError) as e:
             app.log.error(e)
             raise ChaliceViewError(e)
@@ -131,7 +133,7 @@ def one_light_command(id, command):
             payload=json.dumps(payload).encode('utf-8')
         )
     except KeyError:
-        raise BadRequestError('Unknown command "{}"'.format(command,))
+        raise BadRequestError('Unknown command: {}"'.format(command))
     except Exception as e:
         app.log.error(e)
         raise ChaliceViewError('A server error has occurred.')
