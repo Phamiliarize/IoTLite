@@ -1,7 +1,6 @@
 # IoTLite (POC)
 
-The Lite Solution for AWS IoT Core driven lights.
-
+The Lite　IoT Solution for　IoT lights.
 LEDライトの操作(IoT)用サーバーレスREST APIです。
 
 ## 課題のまとめ
