@@ -76,7 +76,7 @@ chaliceで、一つのCloudFormation packageを生成できますが、`chalice 
 
 ```
 python3 -m venv venv
-. /bin/activate
+. venv/bin/activate
 ```
 
 次に、このリポジトリをクローンして、`cd`でフォルダーに入ります。
